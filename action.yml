@@ -1,0 +1,56 @@
+name: "RejectProof — App Store rejection check"
+description: "Scan an .ipa for 43 documented App Review rejection causes (privacy manifest, purpose strings, Restore Purchases, ATT, Sign in with Apple…) and fail the job on likely rejections."
+author: "RejectProof"
+branding:
+  icon: "check-circle"
+  color: "gray-dark"
+inputs:
+  ipa:
+    description: "Path to the .ipa (or zipped .app) to check"
+    required: true
+  fail-on:
+    description: "Fail the job on: 'rejection' (default) or 'warning' or 'never'"
+    required: false
+    default: "rejection"
+  network:
+    description: "Set to 'false' to skip the dead-link check (no outbound requests)"
+    required: false
+    default: "true"
+outputs:
+  rejections:
+    description: "Number of likely rejections found"
+    value: ${{ steps.scan.outputs.rejections }}
+  warnings:
+    description: "Number of warnings found"
+    value: ${{ steps.scan.outputs.warnings }}
+runs:
+  using: "composite"
+  steps:
+    - id: scan
+      shell: bash
+      run: |
+        set -o pipefail
+        ARGS="${{ inputs.ipa }} --json"
+        if [ "${{ inputs.network }}" = "false" ]; then ARGS="$ARGS --no-network"; fi
+        set +e
+        OUT=$(npx --yes rejectproof@latest $ARGS)
+        CODE=$?
+        set -e
+        echo "$OUT" > rejectproof.json
+        R=$(echo "$OUT" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d);console.log(j.summary.fail)})')
+        W=$(echo "$OUT" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d);console.log(j.summary.warn)})')
+        echo "rejections=$R" >> "$GITHUB_OUTPUT"
+        echo "warnings=$W" >> "$GITHUB_OUTPUT"
+        echo "## RejectProof" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "**$R likely rejections · $W warnings** — \`${{ inputs.ipa }}\`" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "$OUT" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d);for(const f of j.findings.filter(f=>f.status!=="pass"))console.log(`- ${f.status==="fail"?"❌":f.status==="warn"?"⚠️":"❔"} ${f.title} (${f.id}, guideline ${f.guideline})`)})' >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "Fixes for every item: run \`npx rejectproof ${{ inputs.ipa }} --report\` locally, or drop the build on https://rejectproof.com" >> "$GITHUB_STEP_SUMMARY"
+        case "${{ inputs.fail-on }}" in
+          rejection) [ "$R" = "0" ] || { echo "::error::$R likely App Store rejection(s) found"; exit 1; } ;;
+          warning) [ "$R" = "0" ] && [ "$W" = "0" ] || { echo "::error::$R rejection(s), $W warning(s)"; exit 1; } ;;
+        esac
+    - shell: bash
+      run: echo "::notice::RejectProof scan finished — see the job summary"

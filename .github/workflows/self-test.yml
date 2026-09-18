@@ -1,0 +1,13 @@
+name: self-test
+on: [push, workflow_dispatch]
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: curl -sSLo Trailmix-sample.ipa https://rejectproof.com/sample/Trailmix-sample.ipa
+      - uses: ./
+        with:
+          ipa: Trailmix-sample.ipa
+          fail-on: never
+          network: "false"
