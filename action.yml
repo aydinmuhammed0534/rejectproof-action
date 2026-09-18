@@ -47,7 +47,7 @@ runs:
         echo "" >> "$GITHUB_STEP_SUMMARY"
         echo "$OUT" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d);for(const f of j.findings.filter(f=>f.status!=="pass"))console.log(`- ${f.status==="fail"?"❌":f.status==="warn"?"⚠️":"❔"} ${f.title} (${f.id}, guideline ${f.guideline})`)})' >> "$GITHUB_STEP_SUMMARY"
         echo "" >> "$GITHUB_STEP_SUMMARY"
-        echo "Fixes for every item: run \`npx rejectproof ${{ inputs.ipa }} --report\` locally, or drop the build on https://rejectproof.com" >> "$GITHUB_STEP_SUMMARY"
+        echo "Fixes for every item: run \`npx rejectproof ${{ inputs.ipa }} --report\` locally, or drop the build on https://rejectproof.com/?ref=action" >> "$GITHUB_STEP_SUMMARY"
         case "${{ inputs.fail-on }}" in
           rejection) [ "$R" = "0" ] || { echo "::error::$R likely App Store rejection(s) found"; exit 1; } ;;
           warning) [ "$R" = "0" ] && [ "$W" = "0" ] || { echo "::error::$R rejection(s), $W warning(s)"; exit 1; } ;;
