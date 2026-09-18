@@ -1,5 +1,5 @@
 name: "RejectProof — App Store rejection check"
-description: "Scan an .ipa for 43 documented App Review rejection causes (privacy manifest, purpose strings, Restore Purchases, ATT, Sign in with Apple…) and fail the job on likely rejections."
+description: "Scan an .ipa for 43 App Store rejection causes and fail the job on likely rejections, before App Review does."
 author: "RejectProof"
 branding:
   icon: "check-circle"
